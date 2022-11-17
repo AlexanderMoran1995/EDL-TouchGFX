@@ -1054,7 +1054,12 @@ int main(void)
 	  uint32_t elapsed = now - then;
 	  if (elapsed > 1000)
 	  {
+		  // Here we send the data from frame buffer to LCD screen.
+
+		  // Here we signal TouchGFX that we are ready for it to update the frame buffer
 		  touchgfx_signalVSync();
+
+		  // Track time elapsed.
 		  then = now;
 	  }
 

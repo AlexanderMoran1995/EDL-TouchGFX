@@ -13,7 +13,7 @@ screenViewBase::screenViewBase() :
     __background.setColor(touchgfx::Color::getColorFromRGB(0, 0, 0));
 
     box1.setPosition(0, 0, 240, 320);
-    box1.setColor(touchgfx::Color::getColorFromRGB(255, 255, 255));
+    box1.setColor(touchgfx::Color::getColorFromRGB(189, 223, 123));
 
     button1.setXY(35, 130);
     button1.setBitmaps(touchgfx::Bitmap(BITMAP_BLUE_BUTTONS_ROUND_EDGE_SMALL_ID), touchgfx::Bitmap(BITMAP_BLUE_BUTTONS_ROUND_EDGE_SMALL_PRESSED_ID));
