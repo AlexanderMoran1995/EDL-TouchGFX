@@ -1041,8 +1041,8 @@ int main(void)
   HAL_Delay(20);
   ILI9341_Init();//initial driver setup to drive ili9341
 
-
-  ILI9341_Draw_Image((const char*)pro_X, SCREEN_VERTICAL_2);
+//  // Here is the original test, w/o TouchGFX, sending a fixed screen buffer.
+//  ILI9341_Draw_Image((const char*)pro_X, SCREEN_VERTICAL_2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -1055,6 +1055,8 @@ int main(void)
 	  if (elapsed > 1000)
 	  {
 		  // Here we send the data from frame buffer to LCD screen.
+		  uint16_t *fbp = touchgfx_getTFTFrameBuffer();
+		  ILI9341_Draw_Image((const char*)fbp, SCREEN_VERTICAL_2);
 
 		  // Here we signal TouchGFX that we are ready for it to update the frame buffer
 		  touchgfx_signalVSync();

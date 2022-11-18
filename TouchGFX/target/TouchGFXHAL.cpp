@@ -19,19 +19,27 @@
 /* USER CODE END Header */
 
 #include <TouchGFXHAL.hpp>
-#include <touchgfx/hal/OSWrappers.hpp>
 
 /* USER CODE BEGIN TouchGFXHAL.cpp */
+#include <touchgfx/hal/OSWrappers.hpp>
+
 
 // THSG
 extern "C" void touchgfx_signalVSync();
+extern "C" uint16_t* touchgfx_getTFTFrameBuffer();
 
 using namespace touchgfx;
+
+static uint16_t * g_frameBuf;
 
 // THSG
 void touchgfx_signalVSync()
 {
 	OSWrappers::signalVSync();
+}
+uint16_t* touchgfx_getTFTFrameBuffer()
+{
+	return g_frameBuf;
 }
 
 void TouchGFXHAL::initialize()
@@ -43,6 +51,8 @@ void TouchGFXHAL::initialize()
     // Please note, HAL::initialize() must be called to initialize the framework.
 
     TouchGFXGeneratedHAL::initialize();
+
+    g_frameBuf = getTFTFrameBuffer();
 }
 
 /**
