@@ -994,22 +994,48 @@ void ILI9341_Draw_Image(const char* Image_Array, uint8_t Orientation)
 		HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_SET);
 }
 
-/* USER CODE END 0 */
+
+//// THSG from https://community.st.com/s/question/0D50X0000BztScBSQU/how-to-swap-littleendian-to-bigendian-in-touchgfx
+//void ILI9341_WriteData16(uint8_t* buff, uint32_t buff_size)
+//{
+////  SCB_CleanDCache_by_Addr((uint32_t*)(((uint32_t)buff) & ~(uint32_t)(__SCB_DCACHE_LINE_SIZE - 1U)), buff_size + __SCB_DCACHE_LINE_SIZE); /* Mem-to-Peri */
+//  HAL_GPIO_WritePin(DC_GPIO_Port, DC_Pin, GPIO_PIN_SET);
+//  HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_RESET);
+//
+//  // Set SPI to 16-bit
+//  hspi1.Init.DataSize = SPI_DATASIZE_16BIT;
+//  HAL_SPI_Init(&hspi1);
+//  // Split data in smaller, less than 64k chunks, because HAL can't send 64K at once
+//  buff_size /= 2;
+//  uint32_t buff_size_max = 65536 - 4;
+//  while (buff_size > 0)
+//  {
+//    uint16_t chunk_size = buff_size > buff_size_max ? buff_size_max : buff_size;
+//    HAL_SPI_Transmit(&hspi1, buff, chunk_size, HAL_MAX_DELAY);
+//    buff += chunk_size * 2;
+//    buff_size -= chunk_size;
+//  }
+//  HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_SET);
+//
+//  // Set SPI back to 8-bit
+//  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+//  HAL_SPI_Init(&hspi1);
+//}
 
 void swap(void)
 {
 	int i;
-
+	int len = 320*240;
 	uint16_t *fbp = touchgfx_getTFTFrameBuffer();
-
-	int numElements = 320 * 240;
-
-	for (i=0;i<numElements;i++)
+	for (i=0;i<len;i++)
 	{
-		uint16_t u = (fbp[i] << 8) | (fbp[i] >> 8);
+		uint16_t u = (fbp[i] >> 8) | (fbp[i] << 8);
 		fbp[i] = u;
 	}
 }
+
+
+/* USER CODE END 0 */
 
 /**
   * @brief  The application entry point.
@@ -1058,10 +1084,12 @@ int main(void)
 
 //  // Here is the original test, w/o TouchGFX, sending a fixed screen buffer.
 //  ILI9341_Draw_Image((const char*)pro_X, SCREEN_VERTICAL_2);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  int count = 0;
   uint32_t then = 0;
   while (1)
   {
@@ -1069,11 +1097,22 @@ int main(void)
 	  uint32_t elapsed = now - then;
 	  if (elapsed > 1000)
 	  {
-		  swap();
+		  // For demo purposes, we byte-swap the display (frame) buffer after it touchGFX
+		  // has written to it. This is obviously not ideal.
+		  // Solution is to fix the transfer endinnness, probably by setting SPI data size to 16 bits
+		  // for data.
+		  if (++count == 2)
+		  {
+			  swap();
+		  } else if (count > 2)
+		  {
+			  count = 10;	// stall the count
+		  }
 
 		  // Here we send the data from frame buffer to LCD screen.
 		  uint16_t *fbp = touchgfx_getTFTFrameBuffer();
 		  ILI9341_Draw_Image((const char*)fbp, SCREEN_VERTICAL_2);
+//		  ILI9341_WriteData16((const char*)fbp, 320*240);
 
 		  // Here we signal TouchGFX that we are ready for it to update the frame buffer
 		  touchgfx_signalVSync();

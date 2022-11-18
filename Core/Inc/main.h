@@ -239,6 +239,156 @@ void ILI9341_Draw_Vertical_Line(uint16_t X, uint16_t Y, uint16_t Height, uint16_
 #define ILI9341_SCREEN_HEIGHT 240
 #define ILI9341_SCREEN_WIDTH 	320
 
+
+/* USER CODE END EC */
+
+/* Exported macro ------------------------------------------------------------*/
+/* USER CODE BEGIN EM */
+
+/* USER CODE END EM */
+
+/* Exported functions prototypes ---------------------------------------------*/
+void Error_Handler(void);
+
+/* USER CODE BEGIN EFP */
+void ILI9341_Init(void);
+void ILI9341_SetWindow(uint16_t start_x, uint16_t start_y, uint16_t end_x, uint16_t end_y);
+void ILI9341_DrawBitmap(uint16_t w, uint16_t h, uint8_t *s);
+void ILI9341_WritePixel(uint16_t x, uint16_t y, uint16_t color);
+void ILI9341_EndOfDrawBitmap(void);
+
+void LCD_WR_REG(uint8_t data);
+void LCD_IO_WriteMultipleData(uint8_t *pData, uint32_t Size);
+
+void ILI9341_SPI_Init(void);
+void ILI9341_SPI_Send(unsigned char SPI_Data);
+void ILI9341_Write_Command(uint8_t Command);
+void ILI9341_Write_Data(uint8_t Data);
+void ILI9341_Set_Address(uint16_t X1, uint16_t Y1, uint16_t X2, uint16_t Y2);
+void ILI9341_Reset(void);
+void ILI9341_Set_Rotation(uint8_t Rotation);
+void ILI9341_Enable(void);
+void ILI9341_Init(void);
+void ILI9341_Fill_Screen(uint16_t Colour);
+void ILI9341_Draw_Colour(uint16_t Colour);
+void ILI9341_Draw_Pixel(uint16_t X,uint16_t Y,uint16_t Colour);
+void ILI9341_Draw_Colour_Burst(uint16_t Colour, uint32_t Size);
+
+
+void ILI9341_Draw_Rectangle(uint16_t X, uint16_t Y, uint16_t Width, uint16_t Height, uint16_t Colour);
+void ILI9341_Draw_Horizontal_Line(uint16_t X, uint16_t Y, uint16_t Width, uint16_t Colour);
+void ILI9341_Draw_Vertical_Line(uint16_t X, uint16_t Y, uint16_t Height, uint16_t Colour);
+
+
+//bool begin(uint8_t thresh );
+  uint8_t touched(void);
+//  FT6206_getPoint(uint8_t n);
+
+  void writeRegister8(uint8_t reg, uint8_t val);
+   uint8_t readRegister8(uint8_t reg);
+
+   void readData(void);
+   //uint8_t touches;
+ //  uint16_t touchX[2], touchY[2], touchID[2];
+ //  FT6206_TS_Point(void);
+//   FT6206_TS_Point(int16_t x, int16_t y, int16_t z);
+
+  //   bool operator==(TS_Point);
+   //  bool operator!=(TS_Point);
+
+ //    int16_t x; /*!< X coordinate */
+  //   int16_t y; /*!< Y coordinate */
+  //   int16_t z; /*!< Z coordinate (often used for pressure) */
+/* USER CODE END EFP */
+
+/* Private defines -----------------------------------------------------------*/
+#define TFT_RESET_Pin GPIO_PIN_0
+#define TFT_RESET_GPIO_Port GPIOE
+#define TFT_DC_Pin GPIO_PIN_13
+#define TFT_DC_GPIO_Port GPIOG
+#define TFT_CS_Pin GPIO_PIN_15
+#define TFT_CS_GPIO_Port GPIOA
+#define BACKLIGHT_Pin GPIO_PIN_10
+#define BACKLIGHT_GPIO_Port GPIOA
+/* USER CODE BEGIN Private defines */
+#define ILI9341_SCREEN_HEIGHT 240
+#define ILI9341_SCREEN_WIDTH 	320
+
+
+/* USER CODE END EC */
+
+/* Exported macro ------------------------------------------------------------*/
+/* USER CODE BEGIN EM */
+
+/* USER CODE END EM */
+
+/* Exported functions prototypes ---------------------------------------------*/
+void Error_Handler(void);
+
+/* USER CODE BEGIN EFP */
+void ILI9341_Init(void);
+void ILI9341_SetWindow(uint16_t start_x, uint16_t start_y, uint16_t end_x, uint16_t end_y);
+void ILI9341_DrawBitmap(uint16_t w, uint16_t h, uint8_t *s);
+void ILI9341_WritePixel(uint16_t x, uint16_t y, uint16_t color);
+void ILI9341_EndOfDrawBitmap(void);
+
+void LCD_WR_REG(uint8_t data);
+void LCD_IO_WriteMultipleData(uint8_t *pData, uint32_t Size);
+
+void ILI9341_SPI_Init(void);
+void ILI9341_SPI_Send(unsigned char SPI_Data);
+void ILI9341_Write_Command(uint8_t Command);
+void ILI9341_Write_Data(uint8_t Data);
+void ILI9341_Set_Address(uint16_t X1, uint16_t Y1, uint16_t X2, uint16_t Y2);
+void ILI9341_Reset(void);
+void ILI9341_Set_Rotation(uint8_t Rotation);
+void ILI9341_Enable(void);
+void ILI9341_Init(void);
+void ILI9341_Fill_Screen(uint16_t Colour);
+void ILI9341_Draw_Colour(uint16_t Colour);
+void ILI9341_Draw_Pixel(uint16_t X,uint16_t Y,uint16_t Colour);
+void ILI9341_Draw_Colour_Burst(uint16_t Colour, uint32_t Size);
+
+
+void ILI9341_Draw_Rectangle(uint16_t X, uint16_t Y, uint16_t Width, uint16_t Height, uint16_t Colour);
+void ILI9341_Draw_Horizontal_Line(uint16_t X, uint16_t Y, uint16_t Width, uint16_t Colour);
+void ILI9341_Draw_Vertical_Line(uint16_t X, uint16_t Y, uint16_t Height, uint16_t Colour);
+
+
+//bool begin(uint8_t thresh );
+  uint8_t touched(void);
+//  FT6206_getPoint(uint8_t n);
+
+  void writeRegister8(uint8_t reg, uint8_t val);
+   uint8_t readRegister8(uint8_t reg);
+
+   void readData(void);
+   //uint8_t touches;
+ //  uint16_t touchX[2], touchY[2], touchID[2];
+ //  FT6206_TS_Point(void);
+//   FT6206_TS_Point(int16_t x, int16_t y, int16_t z);
+
+  //   bool operator==(TS_Point);
+   //  bool operator!=(TS_Point);
+
+ //    int16_t x; /*!< X coordinate */
+  //   int16_t y; /*!< Y coordinate */
+  //   int16_t z; /*!< Z coordinate (often used for pressure) */
+/* USER CODE END EFP */
+
+/* Private defines -----------------------------------------------------------*/
+#define TFT_RESET_Pin GPIO_PIN_0
+#define TFT_RESET_GPIO_Port GPIOE
+#define TFT_DC_Pin GPIO_PIN_13
+#define TFT_DC_GPIO_Port GPIOG
+#define TFT_CS_Pin GPIO_PIN_15
+#define TFT_CS_GPIO_Port GPIOA
+#define BACKLIGHT_Pin GPIO_PIN_10
+#define BACKLIGHT_GPIO_Port GPIOA
+/* USER CODE BEGIN Private defines */
+#define ILI9341_SCREEN_HEIGHT 240
+#define ILI9341_SCREEN_WIDTH 	320
+
 #define GUI_WIDTH 320
 #define GUI_HEIGHT 240
 
