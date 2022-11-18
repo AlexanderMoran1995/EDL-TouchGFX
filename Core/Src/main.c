@@ -996,6 +996,21 @@ void ILI9341_Draw_Image(const char* Image_Array, uint8_t Orientation)
 
 /* USER CODE END 0 */
 
+void swap(void)
+{
+	int i;
+
+	uint16_t *fbp = touchgfx_getTFTFrameBuffer();
+
+	int numElements = 320 * 240;
+
+	for (i=0;i<numElements;i++)
+	{
+		uint16_t u = (fbp[i] << 8) | (fbp[i] >> 8);
+		fbp[i] = u;
+	}
+}
+
 /**
   * @brief  The application entry point.
   * @retval int
@@ -1054,6 +1069,8 @@ int main(void)
 	  uint32_t elapsed = now - then;
 	  if (elapsed > 1000)
 	  {
+		  swap();
+
 		  // Here we send the data from frame buffer to LCD screen.
 		  uint16_t *fbp = touchgfx_getTFTFrameBuffer();
 		  ILI9341_Draw_Image((const char*)fbp, SCREEN_VERTICAL_2);
