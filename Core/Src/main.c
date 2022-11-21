@@ -19,7 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "app_touchgfx.h"
-
+#include "stm32f7xx_hal_spi.h"	// for ILI9341_Write_Data_16bit()
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -972,10 +972,10 @@ void ILI9341_Draw_Text(const char* Text, uint8_t X, uint8_t Y, uint16_t Colour, 
 
 void ILI9341_Draw_Image(const char* Image_Array, uint8_t Orientation)
 {
-
-
 		ILI9341_Set_Rotation(SCREEN_VERTICAL_2);
 		ILI9341_SetWindow(0,0,ILI9341_SCREEN_HEIGHT,ILI9341_SCREEN_WIDTH);
+
+//		hspi1.Init.DataSize = SPI_DATASIZE_16BIT;		// change to 16-bit data size
 
 		HAL_GPIO_WritePin(DC_GPIO_Port, DC_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_RESET);
@@ -984,14 +984,17 @@ void ILI9341_Draw_Image(const char* Image_Array, uint8_t Orientation)
 		uint32_t counter = 0;
 		for(uint32_t i = 0; i < ILI9341_SCREEN_WIDTH*ILI9341_SCREEN_HEIGHT*2/BURST_MAX_SIZE; i++)
 		{
-				for(uint32_t k = 0; k< BURST_MAX_SIZE; k++)
+				for(uint32_t k = 0; k< BURST_MAX_SIZE; k+=2)
 				{
-					Temp_small_buffer[k]	= Image_Array[counter+k];
+					Temp_small_buffer[k+1]	= Image_Array[counter+k+0];
+					Temp_small_buffer[k+0]	= Image_Array[counter+k+1];
 				}
-				HAL_SPI_Transmit(&hspi1, (unsigned char*)Temp_small_buffer, BURST_MAX_SIZE, 10);
+				HAL_SPI_Transmit(&hspi1, Temp_small_buffer, BURST_MAX_SIZE, 10);
 				counter += BURST_MAX_SIZE;
 		}
 		HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_SET);
+
+		hspi1.Init.DataSize = SPI_DATASIZE_8BIT;		// change to 16-bit data size
 }
 
 
@@ -1089,7 +1092,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  int count = 0;
+//  int count = 0;
   uint32_t then = 0;
   while (1)
   {
@@ -1097,22 +1100,21 @@ int main(void)
 	  uint32_t elapsed = now - then;
 	  if (elapsed > 1000)
 	  {
-		  // For demo purposes, we byte-swap the display (frame) buffer after it touchGFX
-		  // has written to it. This is obviously not ideal.
-		  // Solution is to fix the transfer endinnness, probably by setting SPI data size to 16 bits
-		  // for data.
-		  if (++count == 2)
-		  {
-			  swap();
-		  } else if (count > 2)
-		  {
-			  count = 10;	// stall the count
-		  }
+//		  // For demo purposes, we byte-swap the display (frame) buffer after it touchGFX
+//		  // has written to it. This is obviously not ideal.
+//		  // Solution is to fix the transfer endinnness, probably by setting SPI data size to 16 bits
+//		  // for data.
+//		  if (++count == 2)
+//		  {
+//			  swap();
+//		  } else if (count > 2)
+//		  {
+//			  count = 10;	// stall the count
+//		  }
 
 		  // Here we send the data from frame buffer to LCD screen.
 		  uint16_t *fbp = touchgfx_getTFTFrameBuffer();
 		  ILI9341_Draw_Image((const char*)fbp, SCREEN_VERTICAL_2);
-//		  ILI9341_WriteData16((const char*)fbp, 320*240);
 
 		  // Here we signal TouchGFX that we are ready for it to update the frame buffer
 		  touchgfx_signalVSync();
