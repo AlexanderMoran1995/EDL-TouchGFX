@@ -22,6 +22,16 @@
 
 #include <STM32TouchController.hpp>
 
+//THSG
+static int32_t g_x = -1;
+static int32_t g_y = -1;
+extern "C" void setTouch(int32_t x, int32_t y);
+void setTouch(int32_t x, int32_t y)
+{
+	g_x = x;
+	g_y = y;
+}
+
 void STM32TouchController::init()
 {
     /**
@@ -42,7 +52,16 @@ bool STM32TouchController::sampleTouch(int32_t& x, int32_t& y)
      * By default sampleTouch is called every tick, this can be adjusted by HAL::setTouchSampleRate(int8_t);
      *
      */
-    return false;
+	// THSG
+	if ((g_x >= 0) && (g_y >= 0))
+	{
+		x = g_x;
+		y = g_y;
+		g_x = g_y = -1;
+		return true;
+	}
+
+	return false;
 }
 
 /* USER CODE END STM32TouchController */

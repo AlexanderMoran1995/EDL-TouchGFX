@@ -1025,17 +1025,17 @@ void ILI9341_Draw_Image(const char* Image_Array, uint8_t Orientation)
 //  HAL_SPI_Init(&hspi1);
 //}
 
-void swap(void)
-{
-	int i;
-	int len = 320*240;
-	uint16_t *fbp = touchgfx_getTFTFrameBuffer();
-	for (i=0;i<len;i++)
-	{
-		uint16_t u = (fbp[i] >> 8) | (fbp[i] << 8);
-		fbp[i] = u;
-	}
-}
+//void swap(void)
+//{
+//	int i;
+//	int len = 320*240;
+//	uint16_t *fbp = touchgfx_getTFTFrameBuffer();
+//	for (i=0;i<len;i++)
+//	{
+//		uint16_t u = (fbp[i] >> 8) | (fbp[i] << 8);
+//		fbp[i] = u;
+//	}
+//}
 
 
 /* USER CODE END 0 */
@@ -1094,9 +1094,11 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 //  int count = 0;
   uint32_t then = 0;
+  uint32_t lastPolled = 0;
   while (1)
   {
 	  volatile uint32_t now = HAL_GetTick();
+
 	  uint32_t elapsed = now - then;
 	  if (elapsed > 1000)
 	  {
@@ -1121,6 +1123,37 @@ int main(void)
 
 		  // Track time elapsed.
 		  then = now;
+	  }
+
+	  uint32_t touchPollElapsed = now - lastPolled;
+	  if (elapsed > 100)
+	  {
+		  static uint16_t last_x = 0;
+		  static uint16_t last_y = 0;
+
+		  // Poll touch for any change.
+		  // Note that monitoring the IRQ line from touch would be a much more efficient way to update this,
+		  // rather than doing an actual I2C transfer every tick, preferably using an interrupt handler.
+		  uint8_t buf[64] = { 0 };
+		  buf[0] = 0x03;
+		  HAL_StatusTypeDef ret = HAL_I2C_Master_Transmit(&hi2c1, 0x70, buf, 1, 500);
+		  if (ret == HAL_OK)
+		  {
+			 ret = HAL_I2C_Master_Receive(&hi2c1, 0x70, buf, 4, 500);
+			 if (ret == HAL_OK)
+			 {
+				// Mask out all but the 4 LSbits of the MSB for X and Y registers (see data sheet).
+				volatile uint16_t x = (((uint16_t)(buf[0] & 0x0F)) << 8) + buf[1];
+				volatile uint16_t y = (((uint16_t)(buf[2] & 0x0F)) << 8) + buf[3];
+				if ((x != last_x) || (y != last_y))
+				{
+					setTouch(x, y);
+					last_x = x;
+					last_y = y;
+				}
+			 }
+		  }
+		  lastPolled = now;
 	  }
 
     /* USER CODE END WHILE */
