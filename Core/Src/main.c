@@ -1095,12 +1095,14 @@ int main(void)
 //  int count = 0;
   uint32_t then = 0;
   uint32_t lastPolled = 0;
+  uint16_t last_x = 0;
+  uint16_t last_y = 0;
   while (1)
   {
 	  volatile uint32_t now = HAL_GetTick();
 
 	  uint32_t elapsed = now - then;
-	  if (elapsed > 1000)
+	  if (elapsed > 100)
 	  {
 //		  // For demo purposes, we byte-swap the display (frame) buffer after it touchGFX
 //		  // has written to it. This is obviously not ideal.
@@ -1120,16 +1122,6 @@ int main(void)
 
 		  // Here we signal TouchGFX that we are ready for it to update the frame buffer
 		  touchgfx_signalVSync();
-
-		  // Track time elapsed.
-		  then = now;
-	  }
-
-	  uint32_t touchPollElapsed = now - lastPolled;
-	  if (elapsed > 100)
-	  {
-		  static uint16_t last_x = 0;
-		  static uint16_t last_y = 0;
 
 		  // Poll touch for any change.
 		  // Note that monitoring the IRQ line from touch would be a much more efficient way to update this,
@@ -1153,7 +1145,9 @@ int main(void)
 				}
 			 }
 		  }
-		  lastPolled = now;
+
+		  // Track time elapsed.
+		  then = now;
 	  }
 
     /* USER CODE END WHILE */
