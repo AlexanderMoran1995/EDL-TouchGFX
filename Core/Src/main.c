@@ -19,7 +19,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "app_touchgfx.h"
-#include "stm32f7xx_hal_spi.h"	// for ILI9341_Write_Data_16bit()
+#include <stdbool.h>
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -55,6 +56,7 @@ TIM_HandleTypeDef htim1;
 /* USER CODE BEGIN PV */
 volatile uint16_t LCD_HEIGHT = ILI9341_SCREEN_HEIGHT;
 volatile uint16_t LCD_WIDTH	 = ILI9341_SCREEN_WIDTH;
+static bool g_touched = false;
 
 /* USER CODE END PV */
 
@@ -1123,9 +1125,14 @@ int main(void)
 		  // Here we signal TouchGFX that we are ready for it to update the frame buffer
 		  touchgfx_signalVSync();
 
-		  // Poll touch for any change.
-		  // Note that monitoring the IRQ line from touch would be a much more efficient way to update this,
-		  // rather than doing an actual I2C transfer every tick, preferably using an interrupt handler.
+		  // Track time elapsed.
+		  then = now;
+	  }
+
+	  // When TFT_IRQ is triggered.
+	  if (g_touched)
+	  {
+		  // Grab touch coordinates and report to TouchGFX.
 		  uint8_t buf[64] = { 0 };
 		  buf[0] = 0x03;
 		  HAL_StatusTypeDef ret = HAL_I2C_Master_Transmit(&hi2c1, 0x70, buf, 1, 500);
@@ -1137,25 +1144,28 @@ int main(void)
 				// Mask out all but the 4 LSbits of the MSB for X and Y registers (see data sheet).
 				volatile uint16_t x = (((uint16_t)(buf[0] & 0x0F)) << 8) + buf[1];
 				volatile uint16_t y = (((uint16_t)(buf[2] & 0x0F)) << 8) + buf[3];
-				if ((x != last_x) || (y != last_y))
+//				if ((x != last_x) || (y != last_y))
 				{
 					setTouch(x, y);
-					last_x = x;
-					last_y = y;
+//					last_x = x;
+//					last_y = y;
 				}
 			 }
 		  }
 
-		  // Track time elapsed.
-		  then = now;
+		  g_touched = false;
 	  }
-
     /* USER CODE END WHILE */
 
   MX_TouchGFX_Process();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	g_touched = true;
 }
 
 /**
@@ -1428,6 +1438,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(TFT_RESET_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : TFT_IRQ_Pin */
+  GPIO_InitStruct.Pin = TFT_IRQ_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(TFT_IRQ_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pin : TFT_DC_Pin */
   GPIO_InitStruct.Pin = TFT_DC_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -1449,6 +1465,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 }
 
