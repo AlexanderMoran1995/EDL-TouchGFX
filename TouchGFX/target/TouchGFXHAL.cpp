@@ -27,6 +27,7 @@
 // THSG
 extern "C" void touchgfx_signalVSync();
 extern "C" uint16_t* touchgfx_getTFTFrameBuffer();
+extern "C" void drawScreen();
 
 using namespace touchgfx;
 
@@ -174,6 +175,8 @@ bool TouchGFXHAL::beginFrame()
 void TouchGFXHAL::endFrame()
 {
     TouchGFXGeneratedHAL::endFrame();
+	// THSG
+	drawScreen();
 }
 
 /* USER CODE END TouchGFXHAL.cpp */

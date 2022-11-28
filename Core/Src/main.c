@@ -1094,6 +1094,8 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  touchgfx_signalVSync();
+
 //  int count = 0;
   uint32_t then = 0;
   uint32_t lastPolled = 0;
@@ -1103,31 +1105,19 @@ int main(void)
   {
 	  volatile uint32_t now = HAL_GetTick();
 
-	  uint32_t elapsed = now - then;
-	  if (elapsed > 100)
-	  {
-//		  // For demo purposes, we byte-swap the display (frame) buffer after it touchGFX
-//		  // has written to it. This is obviously not ideal.
-//		  // Solution is to fix the transfer endinnness, probably by setting SPI data size to 16 bits
-//		  // for data.
-//		  if (++count == 2)
-//		  {
-//			  swap();
-//		  } else if (count > 2)
-//		  {
-//			  count = 10;	// stall the count
-//		  }
-
-		  // Here we send the data from frame buffer to LCD screen.
-		  uint16_t *fbp = touchgfx_getTFTFrameBuffer();
-		  ILI9341_Draw_Image((const char*)fbp, SCREEN_VERTICAL_2);
-
-		  // Here we signal TouchGFX that we are ready for it to update the frame buffer
-		  touchgfx_signalVSync();
-
-		  // Track time elapsed.
-		  then = now;
-	  }
+//	  uint32_t elapsed = now - then;
+//	  if (elapsed > 100)
+//	  {
+//		  // Here we send the data from frame buffer to LCD screen.
+//		  uint16_t *fbp = touchgfx_getTFTFrameBuffer();
+//		  ILI9341_Draw_Image((const char*)fbp, SCREEN_VERTICAL_2);
+//
+//		  // Here we signal TouchGFX that we are ready for it to update the frame buffer
+//		  touchgfx_signalVSync();
+//
+//		  // Track time elapsed.
+//		  then = now;
+//	  }
 
 	  // When TFT_IRQ is triggered.
 	  if (g_touched)
@@ -1146,7 +1136,7 @@ int main(void)
 				volatile uint16_t y = (((uint16_t)(buf[2] & 0x0F)) << 8) + buf[3];
 //				if ((x != last_x) || (y != last_y))
 				{
-					setTouch(x, y);
+					setTouch(x, y);		// pass coordinates of touch to TouchGFX here
 //					last_x = x;
 //					last_y = y;
 				}
@@ -1161,6 +1151,17 @@ int main(void)
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
+}
+
+// Handle virtual blockCopy() from Middlewares/ST/touchgfx/framework/include/touchgfx/hal/HAL.hpp.
+void drawScreen(void)
+{
+	// Here we send the data from frame buffer to LCD screen.
+	uint16_t *fbp = touchgfx_getTFTFrameBuffer();
+	ILI9341_Draw_Image((const char*)fbp, SCREEN_VERTICAL_2);
+
+	// Here we signal TouchGFX that we are ready for it to update the frame buffer
+	touchgfx_signalVSync();
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
