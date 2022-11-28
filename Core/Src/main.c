@@ -1094,6 +1094,9 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+  // Must call once, to let touchGFX know to do it's first update of the frame buffer.
+  // Before this, there is garbage in the buffer.
   touchgfx_signalVSync();
 
 //  int count = 0;
@@ -1153,7 +1156,9 @@ int main(void)
   /* USER CODE END 3 */
 }
 
-// Handle virtual blockCopy() from Middlewares/ST/touchgfx/framework/include/touchgfx/hal/HAL.hpp.
+// Called from TouchGFXHAL::endFrame() from Middlewares/ST/touchgfx/framework/include/touchgfx/hal/HAL.hpp, to
+// indicate that the LCD needs updating with a change in the frame buffer. This must be done after the parent method
+// has been called.
 void drawScreen(void)
 {
 	// Here we send the data from frame buffer to LCD screen.
