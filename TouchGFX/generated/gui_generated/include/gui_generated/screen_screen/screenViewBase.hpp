@@ -9,6 +9,8 @@
 #include <gui/screen_screen/screenPresenter.hpp>
 #include <touchgfx/widgets/Box.hpp>
 #include <touchgfx/widgets/Button.hpp>
+#include <touchgfx/widgets/canvas/Circle.hpp>
+#include <touchgfx/widgets/canvas/PainterRGB565.hpp>
 
 class screenViewBase : public touchgfx::View<screenPresenter>
 {
@@ -22,14 +24,6 @@ public:
      */
     virtual void action1();
 
-    /*
-     * Virtual Action Handlers
-     */
-    virtual void do_button_click()
-    {
-        // Override and implement this function in screen
-    }
-
 protected:
     FrontendApplication& application() {
         return *static_cast<FrontendApplication*>(touchgfx::Application::getInstance());
@@ -41,6 +35,14 @@ protected:
     touchgfx::Box __background;
     touchgfx::Box box1;
     touchgfx::Button button1;
+    touchgfx::Circle circle1;
+    touchgfx::PainterRGB565 circle1Painter;
+    touchgfx::Circle circle1_1;
+    touchgfx::PainterRGB565 circle1_1Painter;
+    touchgfx::Circle circle1_1_1;
+    touchgfx::PainterRGB565 circle1_1_1Painter;
+    touchgfx::Circle circle1_1_1_1;
+    touchgfx::PainterRGB565 circle1_1_1_1Painter;
 
 private:
 
@@ -54,6 +56,11 @@ private:
      */
     void buttonCallbackHandler(const touchgfx::AbstractButton& src);
 
+    /*
+     * Canvas Buffer Size
+     */
+    static const uint16_t CANVAS_BUFFER_SIZE = 3600;
+    uint8_t canvasBuffer[CANVAS_BUFFER_SIZE];
 };
 
 #endif // SCREENVIEWBASE_HPP
