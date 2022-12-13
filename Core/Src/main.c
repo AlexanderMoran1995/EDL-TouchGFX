@@ -6,24 +6,27 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2022 STMicroelectronics.
-  * All rights reserved.
+  * <h2><center>&copy; Copyright (c) 2022 STMicroelectronics.
+  * All rights reserved.</center></h2>
   *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
+  * This software component is licensed by ST under Ultimate Liberty license
+  * SLA0044, the "License"; You may not use this file except in compliance with
+  * the License. You may obtain a copy of the License at:
+  *                             www.st.com/SLA0044
   *
   ******************************************************************************
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "app_touchgfx.h"
-#include <stdbool.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "app_touchgfx.h"
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdarg.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,15 +46,27 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
 
 CRC_HandleTypeDef hcrc;
 
 I2C_HandleTypeDef hi2c1;
+I2C_HandleTypeDef hi2c2;
+
+RNG_HandleTypeDef hrng;
+
+RTC_HandleTypeDef hrtc;
 
 SPI_HandleTypeDef hspi1;
+SPI_HandleTypeDef hspi2;
+SPI_HandleTypeDef hspi3;
+SPI_HandleTypeDef hspi4;
+SPI_HandleTypeDef hspi5;
 DMA_HandleTypeDef hdma_spi1_tx;
 
 TIM_HandleTypeDef htim1;
+
+PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 /* USER CODE BEGIN PV */
 volatile uint16_t LCD_HEIGHT = ILI9341_SCREEN_HEIGHT;
@@ -62,12 +77,21 @@ static bool g_touched = false;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-static void MX_CRC_Init(void);
 static void MX_GPIO_Init(void);
-static void MX_SPI1_Init(void);
 static void MX_I2C1_Init(void);
-static void MX_DMA_Init(void);
+static void MX_RTC_Init(void);
+static void MX_SPI1_Init(void);
+static void MX_SPI3_Init(void);
+static void MX_SPI4_Init(void);
+static void MX_SPI5_Init(void);
+static void MX_USB_OTG_FS_PCD_Init(void);
+static void MX_I2C2_Init(void);
+static void MX_SPI2_Init(void);
+static void MX_ADC1_Init(void);
 static void MX_TIM1_Init(void);
+static void MX_RNG_Init(void);
+static void MX_DMA_Init(void);
+static void MX_CRC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -972,7 +996,7 @@ void ILI9341_Draw_Text(const char* Text, uint8_t X, uint8_t Y, uint16_t Colour, 
 }
 
 
-void ILI9341_Draw_Image(const char* Image_Array, uint8_t Orientation)
+void ILI9341_Draw_Image(const char* Image_Array, uint8_t Orientation, bool byteswap)
 {
 		ILI9341_Set_Rotation(SCREEN_VERTICAL_2);
 		ILI9341_SetWindow(0,0,ILI9341_SCREEN_HEIGHT,ILI9341_SCREEN_WIDTH);
@@ -982,14 +1006,22 @@ void ILI9341_Draw_Image(const char* Image_Array, uint8_t Orientation)
 		HAL_GPIO_WritePin(DC_GPIO_Port, DC_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_RESET);
 
+		int firstOff = 0;
+		int secondOff = 1;
+		if (byteswap)
+		{
+			firstOff = 1;
+			secondOff = 0;
+		}
+
 		unsigned char Temp_small_buffer[BURST_MAX_SIZE];
 		uint32_t counter = 0;
 		for(uint32_t i = 0; i < ILI9341_SCREEN_WIDTH*ILI9341_SCREEN_HEIGHT*2/BURST_MAX_SIZE; i++)
 		{
 				for(uint32_t k = 0; k< BURST_MAX_SIZE; k+=2)
 				{
-					Temp_small_buffer[k+1]	= Image_Array[counter+k+0];
-					Temp_small_buffer[k+0]	= Image_Array[counter+k+1];
+					Temp_small_buffer[k+0]	= Image_Array[counter+k+firstOff];
+					Temp_small_buffer[k+1]	= Image_Array[counter+k+secondOff];
 				}
 				HAL_SPI_Transmit(&hspi1, Temp_small_buffer, BURST_MAX_SIZE, 10);
 				counter += BURST_MAX_SIZE;
@@ -1000,46 +1032,56 @@ void ILI9341_Draw_Image(const char* Image_Array, uint8_t Orientation)
 }
 
 
-//// THSG from https://community.st.com/s/question/0D50X0000BztScBSQU/how-to-swap-littleendian-to-bigendian-in-touchgfx
-//void ILI9341_WriteData16(uint8_t* buff, uint32_t buff_size)
-//{
-////  SCB_CleanDCache_by_Addr((uint32_t*)(((uint32_t)buff) & ~(uint32_t)(__SCB_DCACHE_LINE_SIZE - 1U)), buff_size + __SCB_DCACHE_LINE_SIZE); /* Mem-to-Peri */
-//  HAL_GPIO_WritePin(DC_GPIO_Port, DC_Pin, GPIO_PIN_SET);
-//  HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_RESET);
-//
-//  // Set SPI to 16-bit
-//  hspi1.Init.DataSize = SPI_DATASIZE_16BIT;
-//  HAL_SPI_Init(&hspi1);
-//  // Split data in smaller, less than 64k chunks, because HAL can't send 64K at once
-//  buff_size /= 2;
-//  uint32_t buff_size_max = 65536 - 4;
-//  while (buff_size > 0)
-//  {
-//    uint16_t chunk_size = buff_size > buff_size_max ? buff_size_max : buff_size;
-//    HAL_SPI_Transmit(&hspi1, buff, chunk_size, HAL_MAX_DELAY);
-//    buff += chunk_size * 2;
-//    buff_size -= chunk_size;
-//  }
-//  HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_SET);
-//
-//  // Set SPI back to 8-bit
-//  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-//  HAL_SPI_Init(&hspi1);
-//}
-
-//void swap(void)
-//{
-//	int i;
-//	int len = 320*240;
-//	uint16_t *fbp = touchgfx_getTFTFrameBuffer();
-//	for (i=0;i<len;i++)
-//	{
-//		uint16_t u = (fbp[i] >> 8) | (fbp[i] << 8);
-//		fbp[i] = u;
-//	}
-//}
 
 
+void Test_Lights_and_Buttons() {
+
+	   int n = 0;
+	   int8_t switch2 ;
+
+	   switch2 =  HAL_GPIO_ReadPin (SWITCH_2_GPIO_Port, SWITCH_2_Pin);
+	   n = switch2;
+
+	   if (n != 0)
+
+	   {
+	   HAL_GPIO_WritePin(LED_CHG_G_GPIO_Port, LED_CHG_G_Pin, GPIO_PIN_RESET);
+	   HAL_GPIO_WritePin(LED_CHG_O_GPIO_Port, LED_CHG_O_Pin, GPIO_PIN_RESET);
+	   HAL_GPIO_WritePin(LED_PWR_GPIO_Port, LED_PWR_Pin, GPIO_PIN_RESET);
+	   }
+
+
+	   if (n == 0)
+
+	   {
+	   HAL_GPIO_WritePin(LED_CHG_G_GPIO_Port, LED_CHG_G_Pin, GPIO_PIN_SET);
+	   HAL_GPIO_WritePin(LED_CHG_O_GPIO_Port, LED_CHG_O_Pin, GPIO_PIN_SET);
+	   HAL_GPIO_WritePin(LED_PWR_GPIO_Port, LED_PWR_Pin, GPIO_PIN_SET);
+	   }
+}
+
+void Test_Buzzer() {
+
+				  HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);
+				  HAL_Delay(10);
+				  HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
+				  HAL_Delay(10);
+
+}
+
+
+void Test_Screen_Visual() {
+
+	//	ILI9341_Draw_Image((const char*)pro_X, SCREEN_VERTICAL_2);
+
+		static int flip = 0;
+		if (!flip)
+			ILI9341_Draw_Image((const char*)pro_X, SCREEN_VERTICAL_1, false);
+		else
+			ILI9341_Draw_Image((const char*)pro_X, SCREEN_VERTICAL_1, true);
+		flip = !flip;
+
+}
 /* USER CODE END 0 */
 
 /**
@@ -1075,20 +1117,30 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-  MX_CRC_Init();
   MX_GPIO_Init();
-  MX_SPI1_Init();
   MX_I2C1_Init();
-  MX_DMA_Init();
+  MX_RTC_Init();
+  MX_SPI1_Init();
+  MX_SPI3_Init();
+  MX_SPI4_Init();
+  MX_SPI5_Init();
+  MX_USB_OTG_FS_PCD_Init();
+  MX_I2C2_Init();
+  MX_SPI2_Init();
+  MX_ADC1_Init();
   MX_TIM1_Init();
+  MX_RNG_Init();
+  MX_DMA_Init();
+  MX_CRC_Init();
+  MX_FATFS_Init();
   MX_TouchGFX_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(BACKLIGHT_GPIO_Port, BACKLIGHT_Pin, GPIO_PIN_SET);
-  HAL_Delay(20);
-  ILI9341_Init();//initial driver setup to drive ili9341
+     HAL_Delay(20);
+     ILI9341_Init();//initial driver setup to drive ili9341
 
-//  // Here is the original test, w/o TouchGFX, sending a fixed screen buffer.
-//  ILI9341_Draw_Image((const char*)pro_X, SCREEN_VERTICAL_2);
+  // Here is the original test, w/o TouchGFX, sending a fixed screen buffer.
+  ILI9341_Draw_Image((const char*)pro_X, SCREEN_VERTICAL_2, false);
 
   /* USER CODE END 2 */
 
@@ -1099,28 +1151,13 @@ int main(void)
   // Before this, there is garbage in the buffer.
   touchgfx_signalVSync();
 
-//  int count = 0;
-  uint32_t then = 0;
-  uint32_t lastPolled = 0;
-  uint16_t last_x = 0;
-  uint16_t last_y = 0;
   while (1)
   {
-	  volatile uint32_t now = HAL_GetTick();
 
-//	  uint32_t elapsed = now - then;
-//	  if (elapsed > 100)
-//	  {
-//		  // Here we send the data from frame buffer to LCD screen.
-//		  uint16_t *fbp = touchgfx_getTFTFrameBuffer();
-//		  ILI9341_Draw_Image((const char*)fbp, SCREEN_VERTICAL_2);
-//
-//		  // Here we signal TouchGFX that we are ready for it to update the frame buffer
-//		  touchgfx_signalVSync();
-//
-//		  // Track time elapsed.
-//		  then = now;
-//	  }
+	  int8_t switch2 ;
+
+//	  Test_Screen_Visual();
+
 
 	  // When TFT_IRQ is triggered.
 	  if (g_touched)
@@ -1163,7 +1200,7 @@ void drawScreen(void)
 {
 	// Here we send the data from frame buffer to LCD screen.
 	uint16_t *fbp = touchgfx_getTFTFrameBuffer();
-	ILI9341_Draw_Image((const char*)fbp, SCREEN_VERTICAL_2);
+	ILI9341_Draw_Image((const char*)fbp, SCREEN_VERTICAL_2, true);
 
 	// Here we signal TouchGFX that we are ready for it to update the frame buffer
 	touchgfx_signalVSync();
@@ -1195,10 +1232,15 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 13;
+  RCC_OscInitStruct.PLL.PLLN = 216;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = 9;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -1215,15 +1257,67 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_7) != HAL_OK)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+
+  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_1;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
 }
 
 /**
@@ -1273,7 +1367,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00303D5B;
+  hi2c1.Init.Timing = 0x204064FF;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -1302,6 +1396,143 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief I2C2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C2_Init(void)
+{
+
+  /* USER CODE BEGIN I2C2_Init 0 */
+
+  /* USER CODE END I2C2_Init 0 */
+
+  /* USER CODE BEGIN I2C2_Init 1 */
+
+  /* USER CODE END I2C2_Init 1 */
+  hi2c2.Instance = I2C2;
+  hi2c2.Init.Timing = 0x20404768;
+  hi2c2.Init.OwnAddress1 = 0;
+  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c2.Init.OwnAddress2 = 0;
+  hi2c2.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Analogue filter
+  */
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c2, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Digital filter
+  */
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c2, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C2_Init 2 */
+
+  /* USER CODE END I2C2_Init 2 */
+
+}
+
+/**
+  * @brief RNG Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_RNG_Init(void)
+{
+
+  /* USER CODE BEGIN RNG_Init 0 */
+
+  /* USER CODE END RNG_Init 0 */
+
+  /* USER CODE BEGIN RNG_Init 1 */
+
+  /* USER CODE END RNG_Init 1 */
+  hrng.Instance = RNG;
+  if (HAL_RNG_Init(&hrng) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN RNG_Init 2 */
+
+  /* USER CODE END RNG_Init 2 */
+
+}
+
+/**
+  * @brief RTC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_RTC_Init(void)
+{
+
+  /* USER CODE BEGIN RTC_Init 0 */
+
+  /* USER CODE END RTC_Init 0 */
+
+  RTC_TimeTypeDef sTime = {0};
+  RTC_DateTypeDef sDate = {0};
+
+  /* USER CODE BEGIN RTC_Init 1 */
+
+  /* USER CODE END RTC_Init 1 */
+
+  /** Initialize RTC Only
+  */
+  hrtc.Instance = RTC;
+  hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
+  hrtc.Init.AsynchPrediv = 127;
+  hrtc.Init.SynchPrediv = 255;
+  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
+  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
+  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
+  if (HAL_RTC_Init(&hrtc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /* USER CODE BEGIN Check_RTC_BKUP */
+
+  /* USER CODE END Check_RTC_BKUP */
+
+  /** Initialize RTC and set the Time and Date
+  */
+  sTime.Hours = 0x0;
+  sTime.Minutes = 0x0;
+  sTime.Seconds = 0x0;
+  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  sTime.StoreOperation = RTC_STOREOPERATION_RESET;
+  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sDate.WeekDay = RTC_WEEKDAY_MONDAY;
+  sDate.Month = RTC_MONTH_JANUARY;
+  sDate.Date = 0x1;
+  sDate.Year = 0x0;
+
+  if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN RTC_Init 2 */
+
+  /* USER CODE END RTC_Init 2 */
 
 }
 
@@ -1342,6 +1573,166 @@ static void MX_SPI1_Init(void)
   /* USER CODE BEGIN SPI1_Init 2 */
 
   /* USER CODE END SPI1_Init 2 */
+
+}
+
+/**
+  * @brief SPI2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI2_Init(void)
+{
+
+  /* USER CODE BEGIN SPI2_Init 0 */
+
+  /* USER CODE END SPI2_Init 0 */
+
+  /* USER CODE BEGIN SPI2_Init 1 */
+
+  /* USER CODE END SPI2_Init 1 */
+  /* SPI2 parameter configuration*/
+  hspi2.Instance = SPI2;
+  hspi2.Init.Mode = SPI_MODE_MASTER;
+  hspi2.Init.Direction = SPI_DIRECTION_1LINE;
+  hspi2.Init.DataSize = SPI_DATASIZE_4BIT;
+  hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi2.Init.NSS = SPI_NSS_HARD_OUTPUT;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi2.Init.CRCPolynomial = 7;
+  hspi2.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+  hspi2.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  if (HAL_SPI_Init(&hspi2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI2_Init 2 */
+
+  /* USER CODE END SPI2_Init 2 */
+
+}
+
+/**
+  * @brief SPI3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI3_Init(void)
+{
+
+  /* USER CODE BEGIN SPI3_Init 0 */
+
+  /* USER CODE END SPI3_Init 0 */
+
+  /* USER CODE BEGIN SPI3_Init 1 */
+
+  /* USER CODE END SPI3_Init 1 */
+  /* SPI3 parameter configuration*/
+  hspi3.Instance = SPI3;
+  hspi3.Init.Mode = SPI_MODE_MASTER;
+  hspi3.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi3.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi3.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi3.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi3.Init.NSS = SPI_NSS_SOFT;
+  hspi3.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128;
+  hspi3.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi3.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi3.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi3.Init.CRCPolynomial = 7;
+  hspi3.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+  hspi3.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
+  if (HAL_SPI_Init(&hspi3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI3_Init 2 */
+
+  /* USER CODE END SPI3_Init 2 */
+
+}
+
+/**
+  * @brief SPI4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI4_Init(void)
+{
+
+  /* USER CODE BEGIN SPI4_Init 0 */
+
+  /* USER CODE END SPI4_Init 0 */
+
+  /* USER CODE BEGIN SPI4_Init 1 */
+
+  /* USER CODE END SPI4_Init 1 */
+  /* SPI4 parameter configuration*/
+  hspi4.Instance = SPI4;
+  hspi4.Init.Mode = SPI_MODE_MASTER;
+  hspi4.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi4.Init.DataSize = SPI_DATASIZE_4BIT;
+  hspi4.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi4.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi4.Init.NSS = SPI_NSS_HARD_OUTPUT;
+  hspi4.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi4.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi4.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi4.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi4.Init.CRCPolynomial = 7;
+  hspi4.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+  hspi4.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  if (HAL_SPI_Init(&hspi4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI4_Init 2 */
+
+  /* USER CODE END SPI4_Init 2 */
+
+}
+
+/**
+  * @brief SPI5 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI5_Init(void)
+{
+
+  /* USER CODE BEGIN SPI5_Init 0 */
+
+  /* USER CODE END SPI5_Init 0 */
+
+  /* USER CODE BEGIN SPI5_Init 1 */
+
+  /* USER CODE END SPI5_Init 1 */
+  /* SPI5 parameter configuration*/
+  hspi5.Instance = SPI5;
+  hspi5.Init.Mode = SPI_MODE_MASTER;
+  hspi5.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi5.Init.DataSize = SPI_DATASIZE_4BIT;
+  hspi5.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi5.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi5.Init.NSS = SPI_NSS_HARD_OUTPUT;
+  hspi5.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi5.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi5.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi5.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi5.Init.CRCPolynomial = 7;
+  hspi5.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+  hspi5.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  if (HAL_SPI_Init(&hspi5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI5_Init 2 */
+
+  /* USER CODE END SPI5_Init 2 */
 
 }
 
@@ -1393,6 +1784,41 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief USB_OTG_FS Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USB_OTG_FS_PCD_Init(void)
+{
+
+  /* USER CODE BEGIN USB_OTG_FS_Init 0 */
+
+  /* USER CODE END USB_OTG_FS_Init 0 */
+
+  /* USER CODE BEGIN USB_OTG_FS_Init 1 */
+
+  /* USER CODE END USB_OTG_FS_Init 1 */
+  hpcd_USB_OTG_FS.Instance = USB_OTG_FS;
+  hpcd_USB_OTG_FS.Init.dev_endpoints = 6;
+  hpcd_USB_OTG_FS.Init.dma_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.phy_itface = PCD_PHY_EMBEDDED;
+  hpcd_USB_OTG_FS.Init.Sof_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.low_power_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.lpm_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.battery_charging_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.vbus_sensing_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.use_dedicated_ep1 = DISABLE;
+  if (HAL_PCD_Init(&hpcd_USB_OTG_FS) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USB_OTG_FS_Init 2 */
+
+  /* USER CODE END USB_OTG_FS_Init 2 */
+
+}
+
+/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -1421,59 +1847,122 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOG_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOI_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(TFT_RESET_GPIO_Port, TFT_RESET_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, BLE_RESET_Pin|RST_Pin|DAC_LDAC_Pin|DAC_MZ_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(TFT_DC_GPIO_Port, TFT_DC_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOG, DC_Pin|LED_CHG_O_Pin|LED_PWR_Pin|LED_CHG_G_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(TFT_CS_GPIO_Port, TFT_CS_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOA, CS_Pin|BACKLIGHT_Pin|BUZZER_Pin|SD_CS_Pin
+                          |ADC_CS3_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(BACKLIGHT_GPIO_Port, BACKLIGHT_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, EXP_GPIO_1_Pin|HUM_RESET_Pin|EXP_GPIO_2_Pin|VAN_EN_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : TFT_RESET_Pin */
-  GPIO_InitStruct.Pin = TFT_RESET_Pin;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(ADC_CS4_GPIO_Port, ADC_CS4_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : BLE_IRQ_Pin */
+  GPIO_InitStruct.Pin = BLE_IRQ_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(BLE_IRQ_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : BLE_RESET_Pin RST_Pin DAC_LDAC_Pin DAC_MZ_Pin */
+  GPIO_InitStruct.Pin = BLE_RESET_Pin|RST_Pin|DAC_LDAC_Pin|DAC_MZ_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(TFT_RESET_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : TFT_IRQ_Pin */
-  GPIO_InitStruct.Pin = TFT_IRQ_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(TFT_IRQ_GPIO_Port, &GPIO_InitStruct);
+  /*Configure GPIO pin : T_IRQ_Pin */
+  GPIO_InitStruct.Pin = T_IRQ_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(T_IRQ_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : TFT_DC_Pin */
-  GPIO_InitStruct.Pin = TFT_DC_Pin;
+  /*Configure GPIO pins : DC_Pin LED_CHG_O_Pin LED_PWR_Pin LED_CHG_G_Pin */
+  GPIO_InitStruct.Pin = DC_Pin|LED_CHG_O_Pin|LED_PWR_Pin|LED_CHG_G_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(TFT_DC_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : TFT_CS_Pin BACKLIGHT_Pin */
-  GPIO_InitStruct.Pin = TFT_CS_Pin|BACKLIGHT_Pin;
+  /*Configure GPIO pins : CS_Pin BACKLIGHT_Pin BUZZER_Pin SD_CS_Pin
+                           ADC_CS3_Pin */
+  GPIO_InitStruct.Pin = CS_Pin|BACKLIGHT_Pin|BUZZER_Pin|SD_CS_Pin
+                          |ADC_CS3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PA5 */
-  GPIO_InitStruct.Pin = GPIO_PIN_5;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  /*Configure GPIO pin : SWITCH_2_Pin */
+  GPIO_InitStruct.Pin = SWITCH_2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(SWITCH_2_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : BATCHG_Pin SD_DETECT_Pin */
+  GPIO_InitStruct.Pin = BATCHG_Pin|SD_DETECT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : EXP_GPIO_1_Pin HUM_RESET_Pin EXP_GPIO_2_Pin VAN_EN_Pin */
+  GPIO_InitStruct.Pin = EXP_GPIO_1_Pin|HUM_RESET_Pin|EXP_GPIO_2_Pin|VAN_EN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : ADC_DRDY1_Pin */
+  GPIO_InitStruct.Pin = ADC_DRDY1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(ADC_DRDY1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : ADC_DRDY3_Pin ADC_DRDY4_Pin HUM_ALERT_Pin */
+  GPIO_InitStruct.Pin = ADC_DRDY3_Pin|ADC_DRDY4_Pin|HUM_ALERT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : ADC_CS4_Pin */
+  GPIO_InitStruct.Pin = ADC_CS4_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(ADC_CS4_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : DAC_READY_Pin */
+  GPIO_InitStruct.Pin = DAC_READY_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(DAC_READY_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 }

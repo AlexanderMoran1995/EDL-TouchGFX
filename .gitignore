@@ -1,11 +1,52 @@
-Debug/
+#settings
+.settings/
+
+#metadata
 .metadata/
-.settings/
-RemoteSystemsTempFiles/
-.settings/
- 
-*.chm
-*.settings.xml
- 
-*.xml
-*.launch
+
+#Debug
+Debug/
+debug/
+Release/
+release
+
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+*.bin
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb

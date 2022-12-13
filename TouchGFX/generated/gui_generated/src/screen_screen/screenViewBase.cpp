@@ -4,83 +4,25 @@
 #include <gui_generated/screen_screen/screenViewBase.hpp>
 #include <touchgfx/Color.hpp>
 #include <BitmapDatabase.hpp>
-#include <touchgfx/canvas_widget_renderer/CanvasWidgetRenderer.hpp>
 
-
-screenViewBase::screenViewBase() :
-    buttonCallback(this, &screenViewBase::buttonCallbackHandler)
+screenViewBase::screenViewBase()
 {
-
-    touchgfx::CanvasWidgetRenderer::setupBuffer(canvasBuffer, CANVAS_BUFFER_SIZE);
 
     __background.setPosition(0, 0, 240, 320);
     __background.setColor(touchgfx::Color::getColorFromRGB(0, 0, 0));
 
     box1.setPosition(0, 0, 240, 320);
-    box1.setColor(touchgfx::Color::getColorFromRGB(189, 223, 123));
+    box1.setColor(touchgfx::Color::getColorFromRGB(31, 82, 22));
 
     button1.setXY(35, 130);
     button1.setBitmaps(touchgfx::Bitmap(BITMAP_BLUE_BUTTONS_ROUND_EDGE_SMALL_ID), touchgfx::Bitmap(BITMAP_BLUE_BUTTONS_ROUND_EDGE_SMALL_PRESSED_ID));
-    button1.setAction(buttonCallback);
-
-    circle1.setPosition(22, 21, 79, 75);
-    circle1.setCenter(40, 40);
-    circle1.setRadius(20);
-    circle1.setLineWidth(0);
-    circle1.setArc(0, 360);
-    circle1Painter.setColor(touchgfx::Color::getColorFromRGB(255, 255, 255));
-    circle1.setPainter(circle1Painter);
-
-    circle1_1.setPosition(126, 55, 79, 75);
-    circle1_1.setCenter(40, 40);
-    circle1_1.setRadius(20);
-    circle1_1.setLineWidth(0);
-    circle1_1.setArc(0, 360);
-    circle1_1Painter.setColor(touchgfx::Color::getColorFromRGB(255, 255, 255));
-    circle1_1.setPainter(circle1_1Painter);
-
-    circle1_1_1.setPosition(35, 197, 79, 75);
-    circle1_1_1.setCenter(40, 40);
-    circle1_1_1.setRadius(20);
-    circle1_1_1.setLineWidth(0);
-    circle1_1_1.setArc(0, 360);
-    circle1_1_1Painter.setColor(touchgfx::Color::getColorFromRGB(255, 255, 255));
-    circle1_1_1.setPainter(circle1_1_1Painter);
-
-    circle1_1_1_1.setPosition(141, 245, 79, 75);
-    circle1_1_1_1.setCenter(40, 40);
-    circle1_1_1_1.setRadius(20);
-    circle1_1_1_1.setLineWidth(0);
-    circle1_1_1_1.setArc(0, 360);
-    circle1_1_1_1Painter.setColor(touchgfx::Color::getColorFromRGB(255, 255, 255));
-    circle1_1_1_1.setPainter(circle1_1_1_1Painter);
 
     add(__background);
     add(box1);
     add(button1);
-    add(circle1);
-    add(circle1_1);
-    add(circle1_1_1);
-    add(circle1_1_1_1);
 }
 
 void screenViewBase::setupScreen()
 {
 
-}
-
-void screenViewBase::action1()
-{
-
-}
-
-void screenViewBase::buttonCallbackHandler(const touchgfx::AbstractButton& src)
-{
-    if (&src == &button1)
-    {
-        //btnClick
-        //When button1 clicked change screen to Screen1
-        //Go to Screen1 with no screen transition
-        application().gotoScreen1ScreenNoTransition();
-    }
 }
