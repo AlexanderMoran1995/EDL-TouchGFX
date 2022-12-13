@@ -5,7 +5,8 @@
 #include <touchgfx/Color.hpp>
 #include <BitmapDatabase.hpp>
 
-screenViewBase::screenViewBase()
+screenViewBase::screenViewBase() :
+    buttonCallback(this, &screenViewBase::buttonCallbackHandler)
 {
 
     __background.setPosition(0, 0, 240, 320);
@@ -16,6 +17,7 @@ screenViewBase::screenViewBase()
 
     button1.setXY(35, 130);
     button1.setBitmaps(touchgfx::Bitmap(BITMAP_BLUE_BUTTONS_ROUND_EDGE_SMALL_ID), touchgfx::Bitmap(BITMAP_BLUE_BUTTONS_ROUND_EDGE_SMALL_PRESSED_ID));
+    button1.setAction(buttonCallback);
 
     add(__background);
     add(box1);
@@ -25,4 +27,15 @@ screenViewBase::screenViewBase()
 void screenViewBase::setupScreen()
 {
 
+}
+
+void screenViewBase::buttonCallbackHandler(const touchgfx::AbstractButton& src)
+{
+    if (&src == &button1)
+    {
+        //Interaction1
+        //When button1 clicked change screen to Screen1
+        //Go to Screen1 with no screen transition
+        application().gotoScreen1ScreenNoTransition();
+    }
 }

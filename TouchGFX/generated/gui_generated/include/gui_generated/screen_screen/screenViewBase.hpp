@@ -31,6 +31,16 @@ protected:
 
 private:
 
+    /*
+     * Callback Declarations
+     */
+    touchgfx::Callback<screenViewBase, const touchgfx::AbstractButton&> buttonCallback;
+
+    /*
+     * Callback Handler Declarations
+     */
+    void buttonCallbackHandler(const touchgfx::AbstractButton& src);
+
 };
 
 #endif // SCREENVIEWBASE_HPP
