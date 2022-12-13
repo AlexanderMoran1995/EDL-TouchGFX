@@ -1,7 +1,7 @@
 
 {
   "Application": {
-    "Name": "LIBRARY_PROTOTYPE",
+    "Name": "tt1",
     "TouchGfxPath": "../Middlewares/ST/touchgfx",
     "AvailableColorDepths": [ 16 ],
     "AvailableLCDs":
@@ -18,7 +18,7 @@
     "Family": "STM32F7",
     "SubFamily": "STM32F7x2",
     "Platform": "m7",
-    "ProjectFile": "../LIBRARY_PROTOTYPE.ioc",
+    "ProjectFile": "../tt1.ioc",
     "OptionalComponentsRoot": "../Middlewares/ST/touchgfx_components",
     "OptionalComponents": [
     ]
